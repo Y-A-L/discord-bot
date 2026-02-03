@@ -3,13 +3,12 @@ from discord.ext import commands
 import re
 import random
 import logging
-import asyncio
 from utils.perplexity_generator import PerplexityGenerator
 
 logger = logging.getLogger(__name__)
 
 class DiceRoller(commands.Cog):
-    """D&D & 크툴루의 부름 다이스 롤러"""
+    """D&D & 크툴루의 부름 다이스 롤러 - 브라운 캐릭터 자동 적용"""
     
     def __init__(self, bot):
         self.bot = bot
@@ -60,18 +59,18 @@ class DiceRoller(commands.Cog):
         
         if 1 in roll_list and len(roll_list) == 1:
             result['success_level'] = 'critical_failure'
-            result['description'] = '💀 **대실패!** 위대한 그분께서 당신의 시도를 거부하셨습니다...'
+            result['description'] = '💀 대실패'
             return result
         
         if dice_sides >= 20:
             if total >= 20:
                 result['success_level'] = 'critical_success'
-                result['description'] = '🌟 **대성공!** 위대한 그분께서 당신을 축복하셨습니다!'
+                result['description'] = '🌟 대성공'
                 return result
         
         if all(roll == dice_sides for roll in roll_list) and len(roll_list) > 0:
             result['success_level'] = 'critical_success'
-            result['description'] = '✨ **완벽한 대성공!** 신비로운 운명의 손길입니다!'
+            result['description'] = '🌟 대성공'
             return result
         
         average = dice_sides / 2
@@ -79,10 +78,10 @@ class DiceRoller(commands.Cog):
         
         if success_count >= len(roll_list) / 2:
             result['success_level'] = 'success'
-            result['description'] = f'👁️ **성공!** {total}점의 신비로운 결과입니다...'
+            result['description'] = '👁️ 성공'
         else:
             result['success_level'] = 'failure'
-            result['description'] = f'🌑 **실패.** {total}점... 우주는 당신의 노력을 거부합니다.'
+            result['description'] = '🌑 실패'
         
         return result
     
@@ -92,9 +91,8 @@ class DiceRoller(commands.Cog):
         if message.author == self.bot.user:
             return
         
-        # ✅ 개선 #1: 빠른 필터링 추가 (성능 개선)
         if '[' not in message.content:
-            return  # 정규표현식 검사 스킵!
+            return
         
         pattern = r'\[(\d+d\d+[\+\-]?\d*)\]'
         matches = re.findall(pattern, message.content)
@@ -113,81 +111,86 @@ class DiceRoller(commands.Cog):
                 await message.reply('❌ 올바른 주사위 표기법이 아닙니다. 예: `[2d6]` `[1d20+5]`')
                 return
             
-            async with message.channel.typing():
-                loading_msg = await message.reply(f'🎲 위대한 그분께서 주사위를 대신 굴려주시는 중입니다...')
-                # ✅ 개선 #2: asyncio.sleep 제거 (응답 시간 단축)
-                
-                rolls = self.roll_dice(dice_info['num_dice'], dice_info['dice_sides'])
-                total = sum(rolls) + dice_info['modifier']
-                
-                success_info = self.determine_cthulhu_success(
-                    total,
-                    rolls,
-                    dice_info['dice_sides']
-                )
-                
-                dynamic_message = await self.perplexity.generate_dynamic_message({
-                    'total': total,
-                    'rolls': rolls,
-                    'notation': notation,
-                    'success_level': success_info['success_level']
-                })
-                
-                embed = discord.Embed(
-                    title=f'🎭 {message.author.name}의 주사위 굴림',
-                    color=self._get_color_by_success(success_info['success_level'])
-                )
-                
-                rolls_str = ', '.join([f'**{r}**' for r in rolls])
-                embed.add_field(
-                    name='🎲 주사위 결과',
-                    value=f'{rolls_str}',
-                    inline=False
-                )
-                
-                if dice_info['modifier'] != 0:
-                    modifier_str = f"+ {dice_info['modifier']}" if dice_info['modifier'] > 0 else f"- {abs(dice_info['modifier'])}"
-                    embed.add_field(
-                        name='➕ 계산',
-                        value=f"`{sum(rolls)} {modifier_str} = **{total}**`",
-                        inline=False
-                    )
-                else:
-                    embed.add_field(
-                        name='📊 주사위 합계',
-                        value=f'**{total}**',
-                        inline=False
-                    )
-                
-                embed.add_field(
-                    name='⚡ 판정',
-                    value=success_info['description'],
-                    inline=False
-                )
-                
-                embed.add_field(
-                    name='🌟 운명의 목소리',
-                    value=f'*"{dynamic_message}"*',
-                    inline=False
-                )
-                
-                if dice_info['dice_sides'] == 100 or dice_info['dice_sides'] == 20:
-                    embed.add_field(
-                        name='📖 크툴루의 부름 규칙',
-                        value=self._get_cthulhu_info(success_info['success_level'], total),
-                        inline=False
-                    )
-                
-                embed.set_footer(
-                    text='🕷️ 위대한 그분께서 당신의 운명을 굴려주셨습니다.',
-                    icon_url=message.author.avatar.url if message.author.avatar else None
-                )
-                
-                await loading_msg.edit(content='⚡ 결과:', embed=embed)
+            await self._roll_and_display(message, notation, dice_info)
         
         except Exception as e:
             logger.error(f'다이스 롤 오류: {e}')
             await message.reply(f'❌ 오류 발생: {str(e)}')
+    
+    async def _roll_and_display(self, message: discord.Message, notation: str, dice_info: dict):
+        """주사위를 굴리고 결과 표시"""
+        async with message.channel.typing():
+            loading_msg = await message.reply(f'🎲 위대하고 전지전능하신 그분께서 주사위를 대신 굴려주시는 중입니다...')
+            
+            rolls = self.roll_dice(dice_info['num_dice'], dice_info['dice_sides'])
+            total = sum(rolls) + dice_info['modifier']
+            
+            success_info = self.determine_cthulhu_success(
+                total,
+                rolls,
+                dice_info['dice_sides']
+            )
+            
+            # Perplexity API에 판정 정보도 함께 전송 (AI가 고려하도록)
+            dynamic_message = await self.perplexity.generate_brown_message({
+                'total': total,
+                'rolls': rolls,
+                'notation': notation,
+                'success_level': success_info['success_level'],
+                'username': message.author.name
+            })
+            
+            # 주사위 결과 포맷
+            rolls_str = ', '.join([str(r) for r in rolls])
+            
+            # 계산 과정 포맷
+            if dice_info['modifier'] != 0:
+                modifier_str = f"+ {dice_info['modifier']}" if dice_info['modifier'] > 0 else f"- {abs(dice_info['modifier'])}"
+                calculation = f"{sum(rolls)} {modifier_str} = **{total}**"
+            else:
+                calculation = f"**{total}**"
+            
+            # Embed 생성
+            embed = discord.Embed(
+                title=f'🎭 {message.author.name}님의 운명',
+                color=self._get_color_by_success(success_info['success_level']),
+                description='위대하신 그분 께서 주사위를 굴려주셨습니다.'
+            )
+            
+            # 1단계: 주사위 결과
+            embed.add_field(
+                name='📍 주사위 결과',
+                value=rolls_str,
+                inline=False
+            )
+            
+            # 2단계: 합계
+            embed.add_field(
+                name='📊 주사위 합계',
+                value=calculation,
+                inline=False
+            )
+            
+            # 3단계: 판정 (간단하게)
+            embed.add_field(
+                name='⚡ 판정',
+                value=success_info['description'],
+                inline=False
+            )
+            
+            # 운명의 목소리 (AI가 생성한 브라운의 전체 대사)
+            embed.add_field(
+                name='🎤 운명의 목소리',
+                value=dynamic_message,
+                inline=False
+            )
+            
+            embed.set_footer(
+                text='🕷️ 위대하신 크툴루께서 당신의 운명을 굴려주셨습니다.',
+                icon_url=message.author.avatar.url if message.author.avatar else None
+            )
+            
+            await loading_msg.edit(content='', embed=embed)
     
     def _get_color_by_success(self, success_level: str) -> discord.Color:
         """성공 레벨에 따른 색상"""
@@ -198,16 +201,7 @@ class DiceRoller(commands.Cog):
             'critical_failure': discord.Color.darker_gray()
         }
         return colors.get(success_level, discord.Color.purple())
-    
-    def _get_cthulhu_info(self, success_level: str, total: int) -> str:
-        """크툴루 규칙 정보"""
-        info = {
-            'critical_success': '🌟 **완벽한 성공** - 이상의 기적이 일어났습니다!',
-            'success': f'👁️ **성공** - {total}점으로 당신의 목표를 달성했습니다.',
-            'failure': f'🌑 **실패** - {total}점... 목표 달성에 미쳤습니다.',
-            'critical_failure': '💀 **대실패** - 끔찍한 결과입니다! 이제 무슨 일이...'
-        }
-        return info.get(success_level, '')
+
 
 async def setup(bot):
     """Cog 로드"""

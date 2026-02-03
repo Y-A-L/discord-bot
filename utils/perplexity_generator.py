@@ -2,54 +2,150 @@ import requests
 import os
 from dotenv import load_dotenv
 import logging
+import random
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 class PerplexityGenerator:
-    """Perplexity API를 이용한 동적 문구 생성"""
+    """Perplexity API를 이용한 동적 문구 생성 - 브라운 캐릭터 적용"""
     
     def __init__(self):
         self.api_key = os.getenv('PERPLEXITY_API_KEY')
         self.api_url = 'https://api.perplexity.ai/chat/completions'
         self.model = 'sonar'
     
-    async def generate_dynamic_message(self, dice_result: dict) -> str:
-        """주사위 결과를 받아 동적 문구 생성"""
+    async def generate_brown_message(self, dice_result: dict) -> str:
+        """브라운 캐릭터의 말투로 메시지 생성"""
+        
+        success_level = dice_result.get('success_level', 'normal')
+        total = dice_result.get('total', 0)
+        notation = dice_result.get('notation', '')
+        username = dice_result.get('username', '참가자')
+        
+        # 브라운 캐릭터 대사 샘플 (28개)
+        brown_samples = """[아, 드디어 왔군요. 우리의 참가 신청자들!]
+[환영해요, 환영해… 자. 이제 곧 카메라가 돌아갑니다. 웃는 얼굴로 멋진 모습을 보여주자고요!]
+[관객분들!]
+[토크쇼 관객이 처음이신가요? 오오, 그럼 환호를 잊지 말아주세요. 여러분의 환호가 쇼의 모든 것이니까요!]
+[3, 2, 1…. 이제 쇼가 시작됩니다!]
+[안녕하십니까, 시청자 여러분! 화요일의 즐거움, 화요일의 열기.]
+[당신은 지금! ‘화요 퀴즈쇼’를 시청하고 계십니다!]
+[다들 화요일을 기다리고 계셨나요? 저도 그렇습니다! 우리 사랑스러운 뉴페이스, 퀴즈쇼 참가자들을 볼 수 있는 유일한 요일이잖습니까!]
+[놀랍게도… 최근 몇십 주간 단 한 번의 오답자도 발생하지 않았죠! 놀랍습니다, 놀라워요….]
+[과연 이번에도 참가자들은 정답을 맞힐 수 있을까요?]
+[오소리, 송골매, 그리고 노루 씨입니다.]
+[모두 큰 박수 부탁드립니다!]
+[맙소사 속보입니다!]
+[참가자들이 전부 정답을 맞힌 지 꽤 됐죠? 그 기간이 무려….]
+[98회라네요!]
+[오늘로 99번째라는 겁니다. 하하!]
+[과연 99번째 참가자들은 연승을 이어가서 100번째 참가자들에게 바통을 넘겨줄 수 있을까요? 아니면 이 대단한 기록은 무너질까요?]
+[채널을 고정하고, 지켜봐 주세요!]
+[그럼 노루 씨!]
+[많이 긴장되나요?]
+[아, 좋습니다, 좋아요…. 그럼 첫 문제는 가볍게 가죠!]
+[정답!]
+[이럴 수가! 정답!]
+[또?]
+[아아아, 아… 갈등하는군요. 갈등해요……. 예, 3번! 교살을 고른 노루 씨의 운명은?? ……정답입니다! 만세!]
+[노루 씨! 마지막 문제입니다.]
+[다른 참가자들은 놀랍게도 모든 문제를 맞히며 또다시 연승 행렬을 이어가고 있습니다!]
+[과연 노루 씨가 마지막 고리를 이어갈 수 있을까요?]
+[준비됐나요?]
+[좋습니다!]
+[아, 1번을 골랐습….]
+[…!]
+[…….]
+[오.]
+[아니, 아니… 이럴 수가!]
+[복수 정답이라는 거군요! 혹시, 바꾸실 생각은?]
+[…이런! 놀라운 소식을 말씀드리겠습니다.]
+[사실 우리의 작가진이 준비한 답은 1번인데요.]
+[노루 씨의 답안이 훨씬 인상적입니다! 더 논리적이기도 하죠? 그렇죠?]
+[그렇다면 당연히 정답이죠! 만점짜리 정답으로 처리하겠습니다! 휼륭해요!]
+[대단합니다, 대단해!]
+[그럼 이것으로….]
+[놀랍게도 우리의 참가자들이 전원 연승 기록을 이어가는군요! 대단합니다!]
+[하지만 최고상을 받아 갈 MVP는 단 한 명이죠. 그건….]
+[바로 노루 씨입니다!]
+[축하합니다! 여기 상품을 받아가세요!]
+[아쉽지만 이제 화요 퀴즈쇼를 마무리할 시간이군요. 내일은 더 근사한 게스트를 모시고 수요…… 음?]
+[이런.]
+[…서프라이즈!]
+[다음 주 화요일에 등장할 참가자들의 깜짝 예고였습니다!]
+[내일은 더 즐거운 쇼로 여러분을 찾아뵙죠!]
+[그럼… 좋은 밤 되세요!]
+[휴우. 하마터면 생방송을 망칠 뻔했네. 잘 수습돼서 다행이죠!]
+[노루 씨! 아주 좋은 센스였어요. 혹시 정규 패널 관심 있습니까?]
+[저런! 뭐, 그래도 언제든 우리 토크쇼의 신청 엽서는 열려 있으니까요!]
+[아, 그리고 새로운 참가자들!]
+[방송을 망칠까 봐 놀랐겠군요. 고의는 아니었겠지요. 믿습니다. 자신을 너무 자책하지 말고요!]
+[그리고 걱정도 하지 마세요. 세 분에게도 다음 기회를 드릴 테니까요!]
+[여러분에게 당장 참가 기회를 드리고 싶지만, 안타깝게도 우리 쇼는 생방송이라서 말입니다. 다음 주에 뵙도록 하죠!]
+[그럼 여러분도 우선은 귀가…… 음?]
+[…! 아, 이런.]
+[있죠. 저도 이런 말을 하기 참 어렵지만… 어.]
+[방금, 우리 쇼가 폐지됐어요.]
+[정확히는, 화요 퀴즈쇼가 말이죠. 그러니 엄밀히 말하자면 내 쇼가 끝난 건 아니긴 합니다만, 예.]
+[퀴즈 코너가 교체됐어요.]
+[여러분을 100번째 연승 도전 참가자로 모시진 못하게 됐습니다. 정말 온 마음을 다해 사과드리고 싶군요.]
+[아! 잠시만요!]
+[희소식입니다. 여러분들 모두를 새 코너에서도 참가자로 모시겠다네요!]
+[심지어 녹화 방송이라 전보다 더 수월할 겁니다! 하하!]
+[바로 촬영 진행하죠! 저는 비록 보조역할이겠지만, 예, 좋은 쇼가 되도록 최선을 다해….]
+[촬영이 끝나지도 않았는데 돌아가겠다고?]
+[이런… 신청 엽서에 다 적혀 있었잖아요. 아니, 그래도 정 참여하지 못하겠다면… 어쩔 수 없겠지.]
+[말해보시죠. 못 하겠나요?]
+[할 수 있군요! 좋아.]
+[이런! 긴장감이 감도는군요. 새 프로그램은 언제나 그렇죠.]
+[힘을 냅시다! 노루 씨, 생방송에서도 훌륭한 모습을 보여줬잖습니까! 이번에도 멋진 모습을 보여줄 수 있을 거예요….]
+[호.]
+[아아! 시작한다! 저기, 불이 들어오는 걸 봐요! 3, 2, 1….]
+[안녕하십니까, 시청자 여러분! 화요일의 즐거움, 화요일의 열기.]
+[당신은 지금! 우리 토크쇼의 새로운 신설 코너를 시청하고 계십니다!]
+[퀴즈쇼가 사라져서 안타깝다고요? 그러실 필요가 없습니다. 왜냐하면, 더 발전된 형태의 퀴즈쇼니까요!]
+[퀴즈 위에 뭔가를 더했다는군요! 뭘까요?]
+[뭐니뭐니 해도 지친 심금을 울리는 것은 선율이죠.]
+[특히 목소리! 합창, 아, 얼마나 아름다운 소리인지!]
+[하하, 우리 밴드는 서운해할 필요가 없답니다. 전혀 다른 장르의 대가를 모셨거든요!]
+[새로운 게스트가 등장합니다!]
+[연옥합창단의 지휘자, 더럽고 추악하고 위대한 선율의 도살자!]
+[그렇습니다. 새 코너의 이름은… 화요의 합창단입니다!]"""
+        
+        # 판정에 따른 프롬프트 지시사항
+        judgment_instruction = self._get_judgment_instruction(success_level)
+        
+        # 브라운 캐릭터 프롬프트 (대사 샘플 포함)
+        prompt = f"""당신은 웹소설 '괴담에 떨어져도 출근을 해야 하는 구나'의 토크쇼 진행자 '브라운'입니다.
+
+### 인물의 외형 및 설정
+- 1970년 미국의 구형 TV머리를 인간의 얼굴 위치에 달고 있음 (안테나도 있음)
+- 맵시 좋은 갈색 쓰리피스 정장을 입은 거대한 몸 (약 2m)
+- 긴 다리, 검은 끈 구두
+- 얼굴 대신 TV 화면에 이모티콘으로만 감정 표현
+
+### 인물의 대사 패턴
+- 모든 대사는 [대괄호] 안에 표출
+- 행동 지문이 있으면 (괄호) 안에 표출
+- 대화만 하거나, 대화에 행동 지문을 섞음
+- 오만하지만 격식을 갖춘 대사
+- 특징적인 말투: "대단합니다", "놀랍습니다", "좋습니다", "아, 이런" 등
+
+### 인물의 샘플 대사
+{brown_samples}
+
+### 현재 상황
+참가자: {username}
+주사위 결과: {notation} = {total}점
+판정: {success_level}
+
+### 지시사항
+{judgment_instruction}
+
+메시지만 제공하세요. 다른 설명은 제외하세요. '위대하신 크툴루'와 같은 신적 존재의 직접적인 언급은 피해주세요."""
+
         try:
-            success_level = dice_result.get('success_level', 'normal')
-            total = dice_result.get('total', 0)
-            notation = dice_result.get('notation', '')
-            
-            # 프롬프트 엔지니어링
-            prompts = {
-                'critical_success': f"""당신은 크툴루의 부름 RPG의 나레이터입니다.
-주사위 결과가 대성공(Critical Success)했습니다: {total}점 (주사위: {notation})
-이 대성공을 축하하는 짧고 재미있는 한국어 1-2줄 메시지를 만들어주세요. 
-초자연적이고 신비로운 톤으로, 마치 위대한 그분(Cthulhu)이 축복을 내려주는 느낌으로 작성해주세요.
-메시지만 작성하고 설명은 제외하세요.""",
-                
-                'success': f"""당신은 크툴루의 부름 RPG의 나레이터입니다.
-주사위 결과가 성공(Success)했습니다: {total}점 (주사위: {notation})
-이 성공을 축하하는 짧고 위트있는 한국어 1-2줄 메시지를 만들어주세요.
-신비로운 톤으로, 마치 당신의 행운이 특별함을 암시하는 느낌으로 작성해주세요.
-메시지만 작성하고 설명은 제외하세요.""",
-                
-                'failure': f"""당신은 크툴루의 부름 RPG의 나레이터입니다.
-주사위 결과가 실패(Failure)했습니다: {total}점 (주사위: {notation})
-이 실패를 동정적이면서도 유머있게 표현하는 짧은 한국어 1-2줄 메시지를 만들어주세요.
-마치 우주의 위대한 힘이 당신의 노력을 무시하는 느낌으로 작성해주세요.
-메시지만 작성하고 설명은 제외하세요.""",
-                
-                'critical_failure': f"""당신은 크툴루의 부름 RPG의 나레이터입니다.
-주사위 결과가 대실패(Critical Failure)했습니다: {total}점 (주사위: {notation})
-이 끔찍한 대실패를 극적이고 재미있게 표현하는 짧은 한국어 1-2줄 메시지를 만들어주세요.
-마치 위대한 그분께서 당신의 시도를 조롱하는 느낌으로, 검은 유머를 섞어서 작성해주세요.
-메시지만 작성하고 설명은 제외하세요."""
-            }
-            
-            prompt = prompts.get(success_level, prompts['success'])
-            
             headers = {
                 'Authorization': f'Bearer {self.api_key}',
                 'Content-Type': 'application/json'
@@ -57,14 +153,12 @@ class PerplexityGenerator:
             
             payload = {
                 'model': self.model,
-                'messages': [
-                    {
-                        'role': 'user',
-                        'content': prompt
-                    }
-                ],
-                'max_tokens': 150,
-                'temperature': 0.6  # ✅ 개선 #3: 0.8 → 0.6 (일관성 개선)
+                'messages': [{
+                    'role': 'user',
+                    'content': prompt
+                }],
+                'max_tokens': 300,
+                'temperature': 0.7
             }
             
             response = requests.post(
@@ -76,41 +170,80 @@ class PerplexityGenerator:
             
             if response.status_code == 200:
                 data = response.json()
-                message = data['choices']['message']['content'].strip()
+                message = data['choices'][0]['message']['content'].strip()
                 return message
             else:
                 logger.warning(f'Perplexity API 오류: {response.status_code}')
-                return self._get_fallback_message(success_level, total)
-        
+                return self._get_fallback_message(success_level, total, username)
+                
         except Exception as e:
             logger.error(f'동적 메시지 생성 오류: {e}')
-            return self._get_fallback_message(success_level, total)
+            return self._get_fallback_message(success_level, total, username)
     
-    def _get_fallback_message(self, success_level: str, total: int) -> str:
-        """API 실패 시 대체 메시지"""
+    def _get_judgment_instruction(self, success_level: str) -> str:
+        """판정에 따른 지시사항"""
+        instructions = {
+            'critical_success': """위의 샘플 대사들처럼 브라운의 말투로 {username}님이 대성공(20점 이상)을 거두었을 때 축하하고 극적으로 표현해주세요.
+규칙:
+- 반드시 [대사] 형식으로 작성
+- 운명, 기적, 이상적인 결과 등을 주제로
+- 대단합니다, 놀랍습니다, 정답입니다 등의 샘플 말투 사용
+- 1-3줄의 자연스러운 한국어 대사
+- 점수({total})를 언급해도 좋고 안 해도 됨""",
+
+            'success': """위의 샘플 대사들처럼 브라운의 말투로 {username}님이 성공을 거두었을 때 축하하고 격려해주세요.
+규칙:
+- 반드시 [대사] 형식으로 작성
+- 당신의 의지, 흐름과의 일치, 신비로운 운 등을 언급
+- 좋습니다, 성공, 흥미롭습니다 등의 샘플 말투 사용
+- 1-3줄의 자연스러운 한국어 대사
+- 점수({total})를 언급해도 좋고 안 해도 됨""",
+
+            'failure': """위의 샘플 대사들처럼 브라운의 말투로 {username}님이 실패했을 때 아쉽지만 따뜻하게 표현해주세요.
+규칙:
+- 반드시 [대사] 형식으로 작성
+- 아쉬움, 다음 기회, 운의 거부 등을 언급
+- 아, 이런, 아니 아니, 갈등하는군요 등의 샘플 말투 사용
+- 1-3줄의 자연스러운 한국어 대사
+- 점수({total})를 언급해도 좋고 안 해도 됨""",
+
+            'critical_failure': """위의 샘플 대사들처럼 브라운의 말투로 {username}님이 대실패(1점)을 거두었을 때 극적으로 표현해주세요.
+규칙:
+- 반드시 [대사] 형식으로 작성
+- 끔찍한 운명, 고통, 절망 등을 언급
+- 맙소사, 아니 아니, 이럴 수가, 호 등의 샘플 말투 사용
+- 1-3줄의 자연스러운 한국어 대사
+- 점수(1)를 꼭 언급해주세요"""
+        }
+        
+        return instructions.get(success_level, instructions['success'])
+    
+    def _get_fallback_message(self, success_level: str, total: int, username: str) -> str:
+        """API 실패 시 대체 메시지 - 브라운 캐릭터"""
+        
         fallback_messages = {
             'critical_success': [
-                f'🌟 당신의 행운은 무한합니다! {total}점의 기적이 일어났습니다!',
-                f'✨ 위대한 그분께서 축복을 내려주셨습니다! {total}점!',
-                f'🎭 이것이 진정한 대성공의 운명입니다! {total}점!',
+                f"[대단합니다! 정말 대단해요! {username}님, {total}점의 완벽한 성공입니다!]",
+                f"[놀랍습니다, 놀라워요! {total}점! 이는 정말 이상적인 결과입니다!]",
+                f"[정답입니다! 만세! {username}님의 {total}점!]"
             ],
             'success': [
-                f'👁️ 당신의 시도는 성공했습니다. {total}점.',
-                f'🔮 신비로운 힘이 당신을 도왔습니다. {total}점.',
-                f'⚡ 당신의 결정이 먹혀들었습니다. {total}점.',
+                f"[좋습니다, 좋아요! {username}님, {total}점으로 성공하셨습니다!]",
+                f"[오, {username}님의 선택이 먹혀들었네요! {total}점!]",
+                f"[성공이군요! {total}점, 훌륭한 결과입니다.]"
             ],
             'failure': [
-                f'🌑 하늘은 당신의 바람을 들으셨지만... {total}점.',
-                f'💀 우주는 당신의 노력을 거부합니다. {total}점.',
-                f'🕷️ 끔찍한 실패입니다. {total}점.',
+                f"[아, 이런... {username}님, {total}점이군요. 아쉽습니다.]",
+                f"[아니, 아니… 이럴 수가! {total}점이었나요...]",
+                f"[이런! {username}님... {total}점... 다음 기회를 노려봅시다.]"
             ],
             'critical_failure': [
-                f'🌀 이것은... 재앙입니다! {total}점!',
-                f'💥 최악의 결과입니다! {total}점!',
-                f'🔥 당신의 행운은 완전히 소진되었습니다! {total}점!',
+                f"[오, 맙소사! {username}님, {total}점... 끔찍한 결과입니다!]",
+                f"[아아, 아… 갈등하는군요... {total}점...]",
+                f"[호. 이건... {total}점... 너무 자책하지 마세요.]"
             ]
         }
         
-        import random
         messages = fallback_messages.get(success_level, fallback_messages['success'])
         return random.choice(messages)
+        
