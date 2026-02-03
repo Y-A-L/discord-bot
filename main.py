@@ -28,7 +28,7 @@ async def load_cogs():
             logger.info(f'✓ Loaded cog: {filename}')
 
 async def main():
-    keep_alive() 
+    
     """봇 실행"""
     async with bot:
         await load_cogs()
@@ -39,4 +39,5 @@ async def main():
         await bot.start(token)
 
 if __name__ == '__main__':
+    keep_alive() 
     asyncio.run(main())
