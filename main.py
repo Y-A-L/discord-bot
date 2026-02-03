@@ -4,6 +4,7 @@ import logging
 import os
 from dotenv import load_dotenv
 import asyncio
+from keep_alive import keep_alive
 
 load_dotenv()
 
@@ -27,6 +28,7 @@ async def load_cogs():
             logger.info(f'✓ Loaded cog: {filename}')
 
 async def main():
+    keep_alive() 
     """봇 실행"""
     async with bot:
         await load_cogs()
