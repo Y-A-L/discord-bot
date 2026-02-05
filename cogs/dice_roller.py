@@ -99,6 +99,20 @@ class DiceRoller(commands.Cog):
         """메시지에서 [NdN] 패턴 감지하여 자동 롤"""
         if message.author == self.bot.user:
             return
+        
+        if message.content.strip() == "[운세]":
+            #타이핑 효과(계산 중임을 알림)
+            async with message.channel.typing():
+                try:
+                    # API 호출
+                    fortune_msg = await self.perplexity.generate_fortune_message(message.author.display_name)
+
+                    #결과 출력
+                    await message.reply(f"## 🔮 브라운의 미스테리 운세 토크\n{fortune_msg}") 
+                except Exception as e:
+                    logger.error(f"운세 출력 실패: {e}")
+                    await message.reply("[치직... 방송 신호가 약하군요. 다시 시도해주세요.]")
+            return
 
         if '[' not in message.content:
             return
@@ -166,80 +180,7 @@ class DiceRoller(commands.Cog):
             logger.error(f'다이스 롤 오류: {e}')
             await message.reply(f'❌ [시스템 오류] 방송 장비에 문제가 생겼군요: {str(e)}')
 
-    # async def _roll_and_display(self, message: discord.Message, notation: str, dice_info: dict):
-    #     """주사위를 굴리고 결과 표시"""
-    #     async with message.channel.typing():
-    #         loading_msg = await message.reply(f'🎲 위대하고 전지전능하신 그분께서 주사위를 대신 굴려주시는 중입니다...')
-
-    #         rolls = self.roll_dice(dice_info['num_dice'], dice_info['dice_sides'])
-    #         total = sum(rolls) + dice_info['modifier']
-
-    #         success_info = self.determine_cthulhu_success(
-    #             total,
-    #             rolls,
-    #             dice_info['dice_sides']
-    #         )
-
-    #         # Perplexity API에 판정 정보도 함께 전송
-    #         dynamic_message = await self.perplexity.generate_brown_message({
-    #             'total': total,
-    #             'rolls': rolls,
-    #             'notation': notation,
-    #             'success_level': success_info['success_level'],
-    #             'username': message.author.display_name
-    #         })
-
-    #         # 주사위 결과 포맷
-    #         rolls_str = ', '.join([str(r) for r in rolls])
-
-    #         # 계산 과정 포맷
-    #         if dice_info['modifier'] != 0:
-    #             modifier_str = f"+ {dice_info['modifier']}" if dice_info['modifier'] > 0 else f"- {abs(dice_info['modifier'])}"
-    #             calculation = f"{sum(rolls)} {modifier_str} = **{total}**"
-    #         else:
-    #             calculation = f"**{total}**"
-
-    #         # Embed 생성
-    #         embed = discord.Embed(
-    #             title=f'{message.author.display_name}님의 운명',
-    #             color=self._get_color_by_success(success_info['success_level']),
-    #             description='위대하신 그분 께서 주사위를 굴려주셨습니다.'
-    #         )
-
-    #         # 1단계: 주사위 결과
-    #         embed.add_field(
-    #             name='📍 주사위 결과',
-    #             value=rolls_str,
-    #             inline=False
-    #         )
-
-    #         # 2단계: 합계
-    #         embed.add_field(
-    #             name='📊 주사위 합계',
-    #             value=calculation,
-    #             inline=False
-    #         )
-
-    #         # 3단계: 판정
-    #         embed.add_field(
-    #             name='⚡ 판정',
-    #             value=success_info['description'],
-    #             inline=False
-    #         )
-
-    #         # 운명의 목소리
-    #         embed.add_field(
-    #             name='🎤 운명의 목소리가 들려오는군요...',
-    #             value=dynamic_message,
-    #             inline=False
-    #         )
-
-    #         embed.set_footer(
-    #             text='🕷️ 위대하신 그분께서 당신의 운명을 굴려주셨습니다.',
-    #             icon_url=message.author.avatar.url if message.author.avatar else None
-    #         )
-
-    #         await loading_msg.edit(content='', embed=embed)
+    
 
     async def _roll_and_display(self, message: discord.Message, notation: str, dice_info: dict):
         """주사위를 굴리고 결과 표시 (Text 버전)"""
